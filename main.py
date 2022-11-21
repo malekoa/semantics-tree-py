@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 from copy import deepcopy
 
 
-rules = {
+rewrite_rules = {
     'S coord S': 'S',
     'NP VP': 'S',
     'NP coord NP': 'NP',
@@ -36,14 +36,15 @@ Each state contains a list of constituents and a list of valid rewrite rules tha
 can be applied to them. If the list of valid rewrite rule reversals is of length 
 0 and len(constituents) != 1, the state is invalid and can be thrown away.
 """
-class State:
-    class Node:
+class SemanticsTree:
+
+    class ConstituentNode:
         def __init__(self, title: str, children: Optional[List] = None) -> None:
             self.title = title
             self.children = children
 
         def __repr__(self) -> str:
-            return f'<Node title="{self.title}" children="{self.children}">'
+            return f'<ConstituentNode title="{self.title}" children="{self.children}">'
 
         @classmethod
         def traverse(cls, root) -> None:
@@ -54,9 +55,9 @@ class State:
                 print(root.title)
 
 
-    def __init__(self, sentence: Union[str, List[Node]]) -> None:
+    def __init__(self, sentence: Union[str, List[ConstituentNode]]) -> None:
         if isinstance(sentence, str):
-            self.constituents = [self.Node(title=i) for i in sentence.split(" ")]
+            self.constituents = [self.ConstituentNode(title=i) for i in sentence.split(" ")]
         elif isinstance(sentence, list):
             self.constituents = sentence
         self.valid_rules = self.get_valid_rules()
@@ -66,8 +67,8 @@ class State:
             i, j = self.valid_rules.pop()
             rewritten = " ".join(node.title for node in self.constituents[i:j])
             new_constituents = deepcopy(self.constituents)
-            new_constituents[i:j] = [self.Node(rules[rewritten], children=self.constituents[i:j])]
-            return State(new_constituents)
+            new_constituents[i:j] = [self.ConstituentNode(rewrite_rules[rewritten], children=self.constituents[i:j])]
+            return SemanticsTree(new_constituents)
 
     def has_valid_rules(self) -> bool:
         return self.valid_rules != None and len(self.valid_rules) > 0
@@ -87,14 +88,15 @@ class State:
             for j in range(i, len(self.constituents) + 1):
                 possible_rule = " ".join(node.title for node in self.constituents[j - (i + 1) : j])
                 print(f'possible_rule: {possible_rule}')
-                if possible_rule in rules:
+                if possible_rule in rewrite_rules:
                     valid_rules.append((j - ( i + 1 ), j))
         if len(valid_rules) > 0:
             return valid_rules
         return None
 
+
 valid_trees = []
-Z = [State("Rosa secretly admired the linguist and the psychologist and Jojo criticized Rosa")]
+Z = [SemanticsTree("Rosa secretly admired the linguist and the psychologist and Jojo criticized Rosa")]
 
 while len(Z) > 0:
     print(Z)
@@ -113,6 +115,7 @@ while len(Z) > 0:
 if len(valid_trees) == 0:
     print('found no valid trees')
 else:
+    print('\nTree found!')
     root = (valid_trees[0])
-    State.Node.traverse(root)
+    SemanticsTree.ConstituentNode.traverse(root)
 
