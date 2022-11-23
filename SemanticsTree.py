@@ -46,6 +46,8 @@ class Node:
     def __repr__(self) -> str:
         return f'<Node label={{{self.label}}} children={{{self.children}}}>'
 
+    # TODO: define an __eq__ and __hash__ function so you can use sets directly in the backtracking part <--
+
 class State: # used for backtracking algorithm for finding valid syntax trees
     def __init__(self, constituents: List[Node], rewrite_rules: Dict[str, str]) -> None:
         self.constituents = constituents
@@ -73,28 +75,52 @@ class State: # used for backtracking algorithm for finding valid syntax trees
     def __repr__(self) -> str:
         return f'<State constituents={{{",".join([constituent.label for constituent in self.constituents])}}}>'
 
+class SemanticsTree:
+    def __init__(self, sentence: str) -> None:
+        self.valid_syntax_trees = self.generate_all_valid_syntax_trees(sentence, pre_percolate=True)
+
+    def pre_percolate(self, noded_sentence: List[Node], rewrite_rules: Dict[str, str]) -> None:
+        for i in range(len(noded_sentence)):
+            while noded_sentence[i].label in rewrite_rules:
+                noded_sentence[i] = Node(label=rewrite_rules[noded_sentence[i].label], children=[noded_sentence[i]])
+
+    def generate_all_valid_syntax_trees(self, sentence: str, pre_percolate: bool = False) -> List[Node]:
+        tokenized_sentence = sentence.split(' ')
+        noded_sentence = [Node(token) for token in tokenized_sentence]
+
+        if pre_percolate:
+            self.pre_percolate(noded_sentence, rewrite_rules=default_rewrite_rules)
+
+        state_0 = State(noded_sentence, rewrite_rules=default_rewrite_rules)
+
+        found_trees = set()
+        dead_ends = set()
+        valid_trees = []
+        Z = [state_0]
+        
+        while len(Z) > 0:
+            top = Z[-1]
+            dead_end_test = ''.join([node.latex_str() for node in top.constituents])
+            if dead_end_test not in dead_ends and top.has_valid_rules():
+                new_state = top.apply_rule(rewrite_rules=default_rewrite_rules)
+                Z.append(new_state)
+                continue
+            elif len(top.constituents) == 1:
+                contender = top.constituents[0]
+                latex_str = contender.latex_str()
+                if latex_str not in found_trees:
+                    valid_trees.append(contender)
+                    found_trees.add(latex_str)
+            elif len(top.constituents) > 1:
+                dead_ends.add(dead_end_test)
+
+            Z.pop()
+
+        return valid_trees
 
 if __name__ == '__main__':
-    sentence = "Rosa secretly admired the linguist and the psychologist and Jojo criticized Rosa"
-    tokenized_sentence = sentence.split(' ')
-    noded_sentence = [Node(token) for token in tokenized_sentence]
-    state_0 = State(noded_sentence, rewrite_rules=default_rewrite_rules)
-
-    valid_trees = []
-    Z = [state_0]
-    
-    while len(Z) > 0:
-        top = Z[-1]
-        if top.has_valid_rules():
-            new_state = top.apply_rule(rewrite_rules=default_rewrite_rules)
-            Z.append(new_state)
-            continue
-        elif len(top.constituents) == 1:
-            valid_trees.append(top.constituents[0])
-            break
-        Z.pop()
-
-    if len(valid_trees) == 1:
-        print('Tree found!')
-        print(valid_trees[0].latex_str())
-
+    sentence = "Jojo and the psychologist or the linguist and the psychologist or Rosa and the linguist supported Rosa enthusiastically or Rosa yawned loudly"
+    sem = SemanticsTree(sentence)
+    print('\nTrees found:')
+    for tree in sem.valid_syntax_trees:
+        print(tree.latex_str())
