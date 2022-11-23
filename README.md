@@ -16,9 +16,9 @@ syntax trees it generates to evaluate the semantic values of each sentence.
 ### Project Requirements
 
 - [x] Generate syntax trees following a set of rewrite rules.
-- [ ] Allow for user-defined rewrite rules.
-- [ ] Generate ALL valid syntax trees, not just the first valid one.
-- [ ] Increase algorithm efficiency.
+- [x] Allow for user-defined rewrite rules.
+- [x] Generate ALL valid syntax trees, not just the first valid one.
+- [x] Increase algorithm efficiency.
 - [ ] Improve robustness of algorithm.
 - [ ] Apply model rules to generated syntax trees.
 - [ ] Figure out if there is a way to allow greater freedom for user defined models.
