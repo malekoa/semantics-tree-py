@@ -43,10 +43,35 @@ class Node:
         else:
             return f'[ {self.label} ]'
 
+    def inorder_str(self) -> str:
+        if self.children:
+            return f'{self.label},{",".join(child.inorder_str() for child in self.children)}'
+        else:
+            return f'{self.label}'
+
     def __repr__(self) -> str:
         return f'<Node label={{{self.label}}} children={{{self.children}}}>'
 
-    # TODO: define an __eq__ and __hash__ function so you can use sets directly in the backtracking part <--
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, Node):
+            if self.label != __o.label: return False # unequal labels
+
+            # one has children but other doesn't
+            if (self.children and not __o.children) or (not self.children and __o.children): return False 
+    
+            # both have children...
+            elif self.children and __o.children: 
+                if len(self.children) != len(__o.children): return False # unequal number of children
+                else: # equal number of children
+                    # returns true if all children are equal, false otherwise
+                    return all([self.children[i] == __o.children[i] for i in range(len(self.children))])
+            # both have no children and same label, must be true
+            return True
+        else:
+            return False
+
+    def __hash__(self) -> int:
+        return hash(self.inorder_str())
 
 class State: # used for backtracking algorithm for finding valid syntax trees
     def __init__(self, constituents: List[Node], rewrite_rules: Dict[str, str]) -> None:
@@ -72,12 +97,21 @@ class State: # used for backtracking algorithm for finding valid syntax trees
     def has_valid_rules(self) -> bool:
         return len(self.valid_rules) > 0
 
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, State) and len(self.constituents) == len(__o.constituents):
+            return all([self.constituents[i] == __o.constituents[i] for i in range(len(self.constituents))])
+        return False
+
+    def __hash__(self) -> int:
+        return hash(','.join([constituent.inorder_str() for constituent in self.constituents]))
+
     def __repr__(self) -> str:
         return f'<State constituents={{{",".join([constituent.label for constituent in self.constituents])}}}>'
 
 class SemanticsTree:
     def __init__(self, sentence: str) -> None:
         self.valid_syntax_trees = self.generate_all_valid_syntax_trees(sentence, pre_percolate=True)
+        self.num_trees = len(self.valid_syntax_trees)
 
     def pre_percolate(self, noded_sentence: List[Node], rewrite_rules: Dict[str, str]) -> None:
         for i in range(len(noded_sentence)):
@@ -100,27 +134,29 @@ class SemanticsTree:
         
         while len(Z) > 0:
             top = Z[-1]
-            dead_end_test = ''.join([node.latex_str() for node in top.constituents])
-            if dead_end_test not in dead_ends and top.has_valid_rules():
+            if top not in dead_ends and top.has_valid_rules():
                 new_state = top.apply_rule(rewrite_rules=default_rewrite_rules)
                 Z.append(new_state)
                 continue
             elif len(top.constituents) == 1:
                 contender = top.constituents[0]
-                latex_str = contender.latex_str()
-                if latex_str not in found_trees:
+                if contender not in found_trees:
                     valid_trees.append(contender)
-                    found_trees.add(latex_str)
+                    found_trees.add(contender)
             elif len(top.constituents) > 1:
-                dead_ends.add(dead_end_test)
+                dead_ends.add(top)
 
             Z.pop()
 
         return valid_trees
 
 if __name__ == '__main__':
-    sentence = "Jojo and the psychologist or the linguist and the psychologist or Rosa and the linguist supported Rosa enthusiastically or Rosa yawned loudly"
+    sentence = "Jojo and the psychologist or the linguist supported Rosa enthusiastically"
+    print(f'sentence: {sentence}')
     sem = SemanticsTree(sentence)
-    print('\nTrees found:')
+    print(f'Found {sem.num_trees} trees:\n')
     for tree in sem.valid_syntax_trees:
         print(tree.latex_str())
+        print()
+
+    print(sem.valid_syntax_trees[0].inorder_str())
