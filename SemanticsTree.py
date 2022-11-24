@@ -49,6 +49,12 @@ class Node:
         else:
             return f'{self.label}'
 
+    def struct_str(self) -> str:
+        if self.children:
+            return f'[{"".join(child.struct_str() for child in self.children)}]'
+        else:
+            return f'[]'
+
     def __repr__(self) -> str:
         return f'<Node label={{{self.label}}} children={{{self.children}}}>'
 
@@ -71,7 +77,7 @@ class Node:
             return False
 
     def __hash__(self) -> int:
-        return hash(self.inorder_str())
+        return hash(self.struct_str())
 
 class State: # used for backtracking algorithm for finding valid syntax trees
     def __init__(self, constituents: List[Node], rewrite_rules: Dict[str, str]) -> None:
@@ -143,7 +149,7 @@ class SemanticsTree:
                 if contender not in found_trees:
                     valid_trees.append(contender)
                     found_trees.add(contender)
-            elif len(top.constituents) > 1:
+            else:
                 dead_ends.add(top)
 
             Z.pop()
@@ -151,12 +157,10 @@ class SemanticsTree:
         return valid_trees
 
 if __name__ == '__main__':
-    sentence = "Jojo and the psychologist or the linguist supported Rosa enthusiastically"
+    sentence = "Jojo and the psychologist supported Rosa enthusiastically and the linguist yawned"
     print(f'sentence: {sentence}')
     sem = SemanticsTree(sentence)
     print(f'Found {sem.num_trees} trees:\n')
     for tree in sem.valid_syntax_trees:
         print(tree.latex_str())
         print()
-
-    print(sem.valid_syntax_trees[0].inorder_str())
