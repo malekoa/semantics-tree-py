@@ -25,6 +25,7 @@ syntax trees it generates to evaluate the semantic values of each sentence.
 
 ### Current State
 
-- Project currently generates syntax trees using a hardcoded ruleset and a quite
-inefficient backtracking algorithm that I quickly put together.
-- Project currently does not yet implement anything related to the model.
+- Optimizations have been made to the backtracking algorithm, it is now relatively
+efficient.
+- All valid trees are now generated.
+- User defined rewrite rules are supported.
