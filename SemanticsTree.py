@@ -3,39 +3,54 @@ from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 
 default_rewrite_rules = {
-    'S coord S': 'S',
     'NP VP': 'S',
-    'NP coord NP': 'NP',
-    'PN': 'NP',
-    'Det N': 'NP',
-    'VP Adv': 'VP',
-    'Adv VP': 'VP',
-    'VP coord VP': 'VP',
-    'V_T NP': 'VP',
     'V_I': 'VP',
-    'supported': 'V_T',
-    'criticized': 'V_T',
+    'V_T NP': 'VP',
+    'Q N\'': 'NP',
+    'PN': 'NP',
+    'Adj N\'': 'N\'',
+    'N': 'N\'',
+    'S XP': 'S',
+    'XP S': 'S',
+    'subord S': 'XP',
+    'albert': 'PN',
+    'betty': 'PN',
+    'carol': 'PN',
+    'alligator': 'N',
+    'boy': 'N',
+    'cat': 'N',
+    'anxious': 'Adj',
+    'big': 'Adj',
+    'caring': 'Adj',
+    'ran': 'V_I',
+    'swam': 'V_I',
+    'cried': 'V_I',
     'admired': 'V_T',
-    'yawned': 'V_I',
-    'slept': 'V_I',
-    'Jojo': 'PN',
-    'Rosa': 'PN',
+    'insulted': 'V_T',
+    'scratched': 'V_T',
+    'if': 'subord',
     'and': 'coord',
     'or': 'coord',
-    'the': 'Det',
-    'a': 'Det',
-    'linguist': 'N',
-    'psychologist': 'N',
-    'loudly': 'Adv',
-    'enthusiastically': 'Adv',
-    'secretly': 'Adv',
+    'every': 'Q',
+    'some': 'Q',
+    'no': 'Q',
+    'most': 'Q',
+    'an': 'Q',
+    'one': 'Q',
+    'two': 'Q',
+    'three': 'Q',
 }
+
+def build_coordination_rules(rewrite_rules: Dict[str, str]):
+    coordinatables = 'S,XP,NP,VP,Adj,N,V_I,V_T,N\''.split(',')
+    for coordinatable in coordinatables:
+        rewrite_rules[f'{coordinatable} coord {coordinatable}'] = coordinatable
 
 class Node:
     def __init__(self, label: str, children: Optional[List[Node]] = None) -> None:
         self.label = label
         self.children = children
-        self.data = None
+        self.data = None # hold meaning values
     
     def latex_str(self) -> str:
         if self.children:
@@ -157,10 +172,12 @@ class SemanticsTree:
         return valid_trees
 
 if __name__ == '__main__':
-    sentence = "Jojo and the psychologist supported Rosa enthusiastically and the linguist yawned"
+    build_coordination_rules(default_rewrite_rules) # builds 'X coord X' rules where X is a coordinatable node
+    sentence = "every alligator and every boy swam if albert and betty admired an alligator"
     print(f'sentence: {sentence}')
     sem = SemanticsTree(sentence)
     print(f'Found {sem.num_trees} trees:\n')
     for tree in sem.valid_syntax_trees:
         print(tree.latex_str())
         print()
+    print(f'Found {sem.num_trees} trees:\n')
