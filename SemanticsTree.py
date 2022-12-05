@@ -1,6 +1,6 @@
 from __future__ import annotations
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 default_rewrite_rules = {
     'NP VP': 'S',
@@ -46,27 +46,38 @@ def build_coordination_rules(rewrite_rules: Dict[str, str]):
     for coordinatable in coordinatables:
         rewrite_rules[f'{coordinatable} coord {coordinatable}'] = coordinatable
 
+class Model:
+    def __init__(self, domain: Optional[List[str]] = None, interpretation_function: Optional[Dict[str, Callable]] = None) -> None:
+        self.domain = domain if domain != None else []
+        self.interpretation_function = interpretation_function if interpretation_function != None else dict()
+
+    def add_domain_item(self, item: str):
+        self.domain.append(item)
+
+    def add_interpretation_mapping(self, value: str, mapping: Callable):
+        self.interpretation_function[value] = mapping
+
 class Node:
     def __init__(self, label: str, children: Optional[List[Node]] = None) -> None:
         self.label = label
         self.children = children
         self.data = None # hold meaning values
     
-    def latex_str(self) -> str:
+    def latex_string(self) -> str:
         if self.children:
-            return f'[ {self.label} {" ".join([child.latex_str() for child in self.children])} ]'
+            return f'[ {self.label} {" ".join([child.latex_string() for child in self.children])} ]'
         else:
             return f'[ {self.label} ]'
 
-    def inorder_str(self) -> str:
+    def inorder_string(self) -> str:
         if self.children:
-            return f'{self.label},{",".join(child.inorder_str() for child in self.children)}'
+            return f'{self.label},{",".join(child.inorder_string() for child in self.children)}'
         else:
             return f'{self.label}'
 
-    def struct_str(self) -> str:
+    def struct_string(self) -> str:
         if self.children:
-            return f'[{"".join(child.struct_str() for child in self.children)}]'
+            return f'[{"".join(child.struct_string() for child in self.children)}]'
         else:
             return f'[]'
 
@@ -92,7 +103,7 @@ class Node:
             return False
 
     def __hash__(self) -> int:
-        return hash(self.struct_str())
+        return hash(self.struct_string())
 
 class State: # used for backtracking algorithm for finding valid syntax trees
     def __init__(self, constituents: List[Node], rewrite_rules: Dict[str, str]) -> None:
@@ -109,7 +120,7 @@ class State: # used for backtracking algorithm for finding valid syntax trees
         return valid_rules
 
     def apply_rule(self, rewrite_rules: Dict[str, str]):
-        i, j = self.valid_rules.pop()
+        i, j = self.valid_rules.pop() # valid_rules is a list of tuples that contain the start and end index of a valid transformation
         rewritten = " ".join(node.label for node in self.constituents[i:j])
         new_constituents = deepcopy(self.constituents)
         new_constituents[i:j] = [Node(rewrite_rules[rewritten], children=self.constituents[i:j])]
@@ -124,7 +135,7 @@ class State: # used for backtracking algorithm for finding valid syntax trees
         return False
 
     def __hash__(self) -> int:
-        return hash(','.join([constituent.inorder_str() for constituent in self.constituents]))
+        return hash(','.join([constituent.inorder_string() for constituent in self.constituents]))
 
     def __repr__(self) -> str:
         return f'<State constituents={{{",".join([constituent.label for constituent in self.constituents])}}}>'
@@ -134,18 +145,21 @@ class SemanticsTree:
         self.valid_syntax_trees = self.generate_all_valid_syntax_trees(sentence, pre_percolate=True)
         self.num_trees = len(self.valid_syntax_trees)
 
+    # performs all possible percolations on tokenized sentence
     def pre_percolate(self, noded_sentence: List[Node], rewrite_rules: Dict[str, str]) -> None:
         for i in range(len(noded_sentence)):
             while noded_sentence[i].label in rewrite_rules:
                 noded_sentence[i] = Node(label=rewrite_rules[noded_sentence[i].label], children=[noded_sentence[i]])
 
-    def generate_all_valid_syntax_trees(self, sentence: str, pre_percolate: bool = False) -> List[Node]:
-        tokenized_sentence = sentence.split(' ')
-        noded_sentence = [Node(token) for token in tokenized_sentence]
+    def generate_all_valid_syntax_trees(self, sentence: str, pre_percolate: bool = True) -> List[Node]:
+        tokenized_sentence = sentence.split(' ') # Tokenize the sentence
+        noded_sentence = [Node(token) for token in tokenized_sentence] # convert list of tokens to list of nodes
 
+        # perform pre-percolation
         if pre_percolate:
             self.pre_percolate(noded_sentence, rewrite_rules=default_rewrite_rules)
 
+        # create initial state
         state_0 = State(noded_sentence, rewrite_rules=default_rewrite_rules)
 
         found_trees = set()
@@ -153,18 +167,20 @@ class SemanticsTree:
         valid_trees = []
         Z = [state_0]
         
+        # while there is an unexhausted state in the stack
         while len(Z) > 0:
-            top = Z[-1]
-            if top not in dead_ends and top.has_valid_rules():
-                new_state = top.apply_rule(rewrite_rules=default_rewrite_rules)
-                Z.append(new_state)
-                continue
-            elif len(top.constituents) == 1:
-                contender = top.constituents[0]
-                if contender not in found_trees:
+            top = Z[-1] # get the top state from the stack
+            if top not in dead_ends and top.has_valid_rules(): # if this structure hasn't been seen yet and it has a valid rule (S has no valid rules)
+                new_state = top.apply_rule(rewrite_rules=default_rewrite_rules) # apply one of the valid rules
+                Z.append(new_state) # append the newly created state to the top of the stack
+                continue # continue from the newly created state
+            elif len(top.constituents) == 1: # else if the top only has one constituent (it is the root of the tree)
+                contender = top.constituents[0] 
+                if contender not in found_trees: # add it to the list if it hasn't been found yet
                     valid_trees.append(contender)
                     found_trees.add(contender)
             else:
+                # else add it to the list of dead ends that don't need to be checked anymore
                 dead_ends.add(top)
 
             Z.pop()
@@ -178,6 +194,6 @@ if __name__ == '__main__':
     sem = SemanticsTree(sentence)
     print(f'Found {sem.num_trees} trees:\n')
     for tree in sem.valid_syntax_trees:
-        print(tree.latex_str())
+        print(tree.latex_string())
         print()
     print(f'Found {sem.num_trees} trees:\n')
