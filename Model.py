@@ -13,12 +13,20 @@ class Model:
     """
 
     def __init__(self):
-        self.runners = set(
+        self.domain = set(
             [
                 "a",
                 "b",
+                "c",
+                "j",
+                "m",
+                "s",
+                "x",
+                "y",
+                "z",
             ]
         )
+        self.runners = set(["x", "y", "j"])
         self.admired = set(
             [
                 ("j", "m"),
@@ -34,9 +42,21 @@ class Model:
             "steve": "s",
             "jane": "j",
             "mike": "m",
+            "people": self.gen_noun_func({"a", "b", "c", "s", "j", "m"}),
+            "person": self.gen_noun_func({"a", "b", "c", "s", "j", "m"}),
+            "cat": self.gen_noun_func({"x", "y", "z"}),
             "admired": self.gen_trans_verb_func(self.admired),
             "ran": self.gen_intrans_verb_func(self.runners),
+            "a": self.gen_quant_func_num(1),
+            "three": self.gen_quant_func_num(3),
         }
+
+    def gen_noun_func(self, noun_set: Set[str]) -> lambda x: bool:
+        """
+        Generates a function that checks if a given argument is in the noun set.
+        Generated function is of form λx.x ∈ noun_set
+        """
+        return lambda x: x in noun_set
 
     def gen_intrans_verb_func(self, verb_set: Set[str]) -> lambda x: bool:
         """
@@ -52,6 +72,21 @@ class Model:
         """
         return lambda y: lambda x: (x, y) in verb_set
 
+    def gen_quant_func_num(self, num: int) -> lambda s1, s2: bool:
+        """
+        Generates a function that checks if a given pair of arguments is in the verb set.
+        Generated function is of form λf.λg.(|CH(f) ∩ CH(g)| > num).
+        This is useful for quantifiers like "an", "a", "one", "two", "three", etc.
+        """
+
+        def ch(f: callable) -> Set[str]:
+            """
+            Returns the set of individuals that are in the extension of the noun phrase.
+            """
+            return {x for x in self.domain if f(x)}
+
+        return lambda s1: lambda s2: len(ch(s1).intersection(ch(s2))) >= num
+
     def traverse(self, tree_node: Node):
         """
         Traverses the parse tree and evaluates it using the model.
@@ -63,18 +98,19 @@ class Model:
                 if len(tree_node.children) == 2:  # if 'tree_node' has two children
                     left = self.traverse(tree_node.children[0])
                     right = self.traverse(tree_node.children[1])
-                    # if left is a function and right is a string, apply left to right
-                    if inspect.isfunction(left) and isinstance(right, str):
+                    # This is quite a hacky way to do this, but it works.
+                    # It will try to apply the left child to the right child,
+                    # and if that fails, it will try to apply the right child
+                    # on the left child.
+                    try:
                         return left(right)
-                    # if right is a function and left is a string, apply right to left
-                    if inspect.isfunction(right) and isinstance(left, str):
-                        return right(left)
-                    # it's possible that both left and right are functions.
-                    # in that case, we'd have to figure out which function to apply to which
-                    # if left and right are not compatible types, raise an error
-                    raise ValueError(
-                        f"Invalid arguments for function {tree_node.label}."
-                    )
+                    except Exception as _:
+                        try:
+                            return right(left)
+                        except Exception as e2:
+                            raise ValueError(
+                                f"Invalid arguments for function {tree_node.label}. Left: {left}, Right: {right}"
+                            ) from e2
             return tree_node  # if the subtree has been evaluated
         # if 'tree_node' is a leaf node
         return self.g[tree_node.label]  # return the value of the leaf node
@@ -103,12 +139,21 @@ def print_tree(sentence: str):
     print(pn_node.latex_string())
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Demonstrates the use of the model.
+    """
     sentences = [
-        "mike ran",  # intransitive, true
-        "albert ran",  # intransitive, false
+        "jane ran",  # intransitive, true
+        "mike ran",  # intransitive, false
         "albert admired betty",  # transitive, true
         "betty admired albert",  # transitive, false
+        "a person ran",  # quantified subject, true
+        "three people ran",  # quantified subject, false
     ]
     for s in sentences:
         print(f"{s} -> {evaluate(s)}")
+
+
+if __name__ == "__main__":
+    main()
