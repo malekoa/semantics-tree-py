@@ -18,6 +18,8 @@ default_rewrite_rules = {
     "carol": "PN",
     "steve": "PN",
     "oscar": "PN",
+    "mike": "PN",
+    "jane": "PN",
     "john": "PN",
     "alligator": "N",
     "boy": "N",
