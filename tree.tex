@@ -1,0 +1,45 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[left=1.3cm, right=1.3cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{blindtext}
+\usepackage{titling}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{setspace}
+\usepackage{paracol}
+\usepackage[linguistics]{forest}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\hypersetup{
+  colorlinks   = true, %Colours links instead of ugly boxes
+  urlcolor     = red, %Colour for external hyperlinks
+  linkcolor    = blue, %Colour of internal links
+  citecolor   = blue %Colour of citations
+}
+\usepackage[font=footnotesize]{caption}
+\usepackage{stmaryrd}
+
+
+\newcommand{\M}[1]{$\llbracket {#1} \rrbracket^M$}
+\newcommand{\ME}[2]{$\llbracket {#1} \rrbracket^M$ {#2}}
+\newcommand{\MUE}[2]{$\llbracket {#1} \rrbracket^M$ \\{#2}}
+\newcommand{\MUEE}[3]{$\llbracket {#1} \rrbracket^M$ {#3} \\{#2}}
+\newcommand{\V}[1]{$\langle {#1} \rangle$}
+\newcommand{\set}[1]{$\{ {#1} \}$}
+
+
+\renewcommand\maketitlehooka{\null\mbox{}\vfill}
+\renewcommand\maketitlehookd{\vfill\null}
+
+\setlength{\headheight}{14.5pt}
+
+\onehalfspacing
+\begin{document}
+
+\huge{
+\begin{forest}
+  #1
+\end{forest}
+}
+\end{document}

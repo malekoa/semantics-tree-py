@@ -3,8 +3,9 @@ Model semantics using semantics tree module.
 """
 
 from typing import Set, Tuple
-import inspect
+import os
 from SemanticsTree import Node, SemanticsTree as Parser
+import re
 
 
 class Model:
@@ -72,6 +73,12 @@ class Model:
         """
         return lambda y: lambda x: (x, y) in verb_set
 
+    def ch(self, f: callable) -> Set[str]:
+        """
+        Returns the set of individuals that are in the extension of the noun phrase.
+        """
+        return {x for x in self.domain if f(x)}
+
     def gen_quant_func_num(self, num: int) -> lambda s1, s2: bool:
         """
         Generates a function that checks if a given pair of arguments is in the verb set.
@@ -79,13 +86,15 @@ class Model:
         This is useful for quantifiers like "an", "a", "one", "two", "three", etc.
         """
 
-        def ch(f: callable) -> Set[str]:
-            """
-            Returns the set of individuals that are in the extension of the noun phrase.
-            """
-            return {x for x in self.domain if f(x)}
+        return lambda s1: lambda s2: len(self.ch(s1).intersection(self.ch(s2))) >= num
 
-        return lambda s1: lambda s2: len(ch(s1).intersection(ch(s2))) >= num
+    def gen_every_func(self) -> lambda x, y: bool:
+        """
+        Returns True if the extension of the first noun phrase is a subset of the extension
+        of the second noun phrase. λf.λg.(CH(f) ⊆ CH(g)).
+        """
+
+        return lambda x: lambda y: self.ch(x).issubset(self.ch(y))
 
     def traverse(self, tree_node: Node):
         """
@@ -136,7 +145,7 @@ def print_tree(sentence: str):
     if p.num_trees == 0:
         raise ValueError("No valid trees found.")
     pn_node = p.valid_syntax_trees[0]
-    print(pn_node.latex_string())
+    return pn_node.latex_string()
 
 
 def main():
@@ -153,6 +162,33 @@ def main():
     ]
     for s in sentences:
         print(f"{s} -> {evaluate(s)}")
+        prepare_tex_doc(print_tree(s), s)
+
+
+def prepare_tex_doc(sentence: str, path: str):
+    sentence = re.sub(
+        r"_[A-Za-z0-9]+", lambda x: r"\textsubscript{" + x.group(0)[1:] + "}", sentence
+    )
+    path = path.replace(" ", "_")
+    # if output directory does not exist, create it
+    if not os.path.exists("output"):
+        os.makedirs("output")
+    with open("tree.tex", "r", encoding="utf-8") as f:
+        contents = f.read()
+        contents = contents.replace("#1", sentence)
+    with open(f"{path}.tex", "w", encoding="utf-8") as f:
+        f.write(contents)
+    os.system(f"pdflatex -output-directory='./output' {path}.tex")
+    os.remove(f"{path}.tex")
+    clear_dir()
+
+
+def clear_dir():
+    # remove all files in the output directory that are not pdfs
+    for filename in os.listdir("output"):
+        if filename.endswith(".pdf"):
+            continue
+        os.remove(f"output/{filename}")
 
 
 if __name__ == "__main__":
